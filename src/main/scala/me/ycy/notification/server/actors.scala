@@ -229,7 +229,7 @@ class NotificationActor extends Actor with ActorLogging {
       return
     }
 
-    self ! CloseCommand(uuid, new Date())
+    self ! CloseCommand(uuid, new Date(), Command.Expired)
   }
 
 }
