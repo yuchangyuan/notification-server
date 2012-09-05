@@ -104,6 +104,9 @@ object Command {
   val Dismissed = 2
   val ExplicitlyClosed = 3
   val Undefined = 4
+
+  val TimeoutNever = 0
+  val TimeoutDefault = -1
 }
 
 sealed trait Command {
@@ -122,7 +125,7 @@ case class CreateCommand(
   bodyClass: List[String] = List(),
   timestamp: Date = new Date(),
   uuid: UUID = UUID.randomUUID,
-  timeout: Long = -1
+  timeout: Long = Command.TimeoutDefault
 ) extends Command {
   val command = "create"
 

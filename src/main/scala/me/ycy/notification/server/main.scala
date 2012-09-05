@@ -15,6 +15,7 @@ object NotificationServer {
   val cActor = actorSystem.actorOf(Props[ClientActor], "client")
   val nActor = actorSystem.actorOf(Props[NotificationActor], "notification")
   val uiActor = actorSystem.actorOf(Props[WebSocketBroadcaster], "ui")
+  val dbusActor = actorSystem.actorOf(Props[DBusBridge], "dbus")
 
   val log = akka.event.Logging.getLogger(actorSystem, this)
 
@@ -66,12 +67,13 @@ object NotificationServer {
 
 
   def main(args: Array[String]) = {
+    // try to connect to session bus
+    dbusActor ! DBusBridge.Connect("")
 
     val webServer = new WebServer(
       WebServerConfig(port = 7755),
       routes, actorSystem
     )
-
     webServer.start()
 
     Runtime.getRuntime.addShutdownHook(new Thread {
