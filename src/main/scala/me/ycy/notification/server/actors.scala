@@ -133,7 +133,7 @@ class NotificationActor extends Actor with ActorLogging {
   val k = "notification.timeout"
   val timeout0 = context.system.settings.config.getLong(k)
   def timeout(t: Long) =
-    if (t == 0)
+    if (t < 0)
       timeout0 milliseconds
     else
       t milliseconds
@@ -165,7 +165,7 @@ class NotificationActor extends Actor with ActorLogging {
             timeout = cc.timeout
           )
 
-          if (cc.timeout >= 0) {
+          if (cc.timeout != 0) {
             context.system.scheduler.scheduleOnce(
               timeout(cc.timeout),
               self, CheckTimeout(cc.uuid, cc.timestamp)
@@ -197,7 +197,7 @@ class NotificationActor extends Actor with ActorLogging {
 
           map += uc.uuid → n
 
-          if (n.timeout >= 0) {
+          if (n.timeout != 0) {
             context.system.scheduler.scheduleOnce(
               timeout(n.timeout),
               self, CheckTimeout(n.uuid, n.timestamp)

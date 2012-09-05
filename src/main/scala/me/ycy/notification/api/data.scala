@@ -122,7 +122,7 @@ case class CreateCommand(
   bodyClass: List[String] = List(),
   timestamp: Date = new Date(),
   uuid: UUID = UUID.randomUUID,
-  timeout: Long = 0
+  timeout: Long = -1
 ) extends Command {
   val command = "create"
 
