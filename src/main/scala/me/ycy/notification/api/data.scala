@@ -76,7 +76,9 @@ object Command {
     try {
       Some(CloseCommand(
         uuid = UUID.fromString(map("uuid").asInstanceOf[JsString].self),
-        timestamp = jsNumber2date(map("timestamp"))
+        timestamp = jsNumber2date(map("timestamp")),
+        reason = map.getOrElse("reason", JsNumber(Undefined)).
+          asInstanceOf[JsNumber].self.toInt
       ))
     }
     catch {
@@ -97,6 +99,11 @@ object Command {
     }
     case _ ⇒ None
   }
+
+  val Expired = 1
+  val Dismissed = 2
+  val ExplicitlyClosed = 3
+  val Undefined = 4
 }
 
 sealed trait Command {
@@ -182,7 +189,8 @@ case class UpdateCommand(
 
 case class CloseCommand(
   uuid: UUID,
-  timestamp: Date = new Date()
+  timestamp: Date = new Date(),
+  reason: Int = Command.Undefined
 ) extends Command {
   val command = "close"
 
@@ -190,7 +198,8 @@ case class CloseCommand(
     var map: Map[JsString, JsValue] = Map(
       JsString("command") → JsString(command),
       JsString("timestamp") → JsNumber(timestamp.getTime),
-      JsString("uuid") → JsString(uuid.toString)
+      JsString("uuid") → JsString(uuid.toString),
+      JsString("reason") → JsNumber(reason)
     )
 
     JsObject(map)
