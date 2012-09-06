@@ -33,8 +33,16 @@ object NotificationServer {
       }
       case event: WebSocketFrameEvent ⇒ {
         log.debug("ui event")
-        // TODO
-        // send to "/user/notification"
+
+        if (event.isText) {
+          val json = event.readText
+          log.debug("get event {}", json)
+          // send to "/user/notification"
+          Event(json) match {
+            case Some(event) ⇒ nActor ! event
+            case _ ⇒ log.info("event not valid.")
+          }
+        }
       }
     }
 

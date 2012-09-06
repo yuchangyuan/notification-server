@@ -5,6 +5,8 @@ import java.util.Date
 
 import dispatch.json._
 
+//  ------------------------------- command --------------------------------
+
 object Command {
   private def jsArray2strList(x: Option[JsValue]): Option[List[String]] =
     x.map {ary ⇒
@@ -194,5 +196,61 @@ case class CloseCommand(
     )
 
     JsObject(map)
+  }
+}
+
+
+//  -------------------------------- event ---------------------------------
+
+sealed trait Event
+
+object FocusedEvent extends Event
+case class ClosedEvent(uuid: UUID, reason: Int) extends Event
+case class ClickedEvent(uuid: UUID, id: String) extends Event
+
+object Event {
+  private def parseClosed(map: Map[String, JsValue]): Option[Event] = {
+    try {
+      val uuid = UUID.fromString(map("uuid").asInstanceOf[JsString].self)
+      val reason = map.getOrElse("reason", JsNumber(4)).
+        asInstanceOf[JsNumber].self.toInt
+      Some(ClosedEvent(uuid, reason))
+    }
+    catch {
+      case _ ⇒ None
+    }
+  }
+
+  private def parseClicked(map: Map[String, JsValue]): Option[Event] = {
+    try {
+      val uuid = UUID.fromString(map("uuid").asInstanceOf[JsString].self)
+      val id = map.get("id").asInstanceOf[JsString].self
+
+      Some(ClickedEvent(uuid, id))
+    }
+    catch {
+      case _ ⇒ None
+    }
+  }
+
+
+  def apply(json: String): Option[Event] = {
+    try {
+      Js(json) match {
+        case JsObject(jsMap) ⇒ {
+          val map = jsMap.map(i ⇒ i._1.self → i._2)
+          map.get("event") match {
+            case Some(JsString("focused")) ⇒ Some(FocusedEvent)
+            case Some(JsString("closed")) ⇒ parseClosed(map)
+            case Some(JsString("clicked")) ⇒ parseClicked(map)
+            case _ ⇒ None
+          }
+        }
+        case _ ⇒ None
+      }
+    }
+    catch {
+      case _ ⇒ None
+    }
   }
 }

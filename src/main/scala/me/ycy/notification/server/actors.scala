@@ -122,13 +122,18 @@ object NotificationActor {
   // check timeout for notification with uuid
   // if timestamp of the notification is eq to timestamp,
   // then the notification is updated and this check should skip.
-  case class CheckTimeout(uuid: UUID, timestamp: Date)
+  case class CheckTimeout(uuid: UUID, timestamp: Date, pause: Long)
+
+  // new ui connected, with associated WebSocketBroadcaster
+  // after send active notifications, stop the WebSocketBroadcaster.
+  case class UIConnected(b: WebSocketBroadcaster)
 }
 
 class NotificationActor extends Actor with ActorLogging {
   import NotificationActor._
 
   var map: Map[UUID, Notification] = Map()
+  var pausedTime: Long = 0 // unit seconds
 
   val k = "notification.timeout"
   val timeout0 = context.system.settings.config.getLong(k)
@@ -140,7 +145,8 @@ class NotificationActor extends Actor with ActorLogging {
 
   def receive = {
     case cmd: Command ⇒ processCommand(cmd)
-    case CheckTimeout(uuid, timestamp) ⇒ checkTimeout(uuid, timestamp)
+    case event: Event ⇒ processEvent(event)
+    case CheckTimeout(id, ts, p) ⇒ checkTimeout(id, ts, p)
   }
 
   def processCommand(cmd: Command): Unit = {
@@ -190,8 +196,15 @@ class NotificationActor extends Actor with ActorLogging {
       context.actorFor("/user/ui") ! WebSocketBroadcastText(json)
   }
 
+  def processEvent(event: Event) = event match {
+    case FocusedEvent ⇒ {
+      pausedTime += 1
+    }
+    case _ ⇒
+  }
 
-  def checkTimeout(uuid: UUID, timestamp: Date): Unit = {
+
+  def checkTimeout(uuid: UUID, timestamp: Date, p0: Long): Unit = {
       // return when the notification to check is not exist
     if (!map.contains(uuid)) {
       log.debug("skip check timeout for non exist notification {}", uuid)
@@ -204,7 +217,15 @@ class NotificationActor extends Actor with ActorLogging {
       return
     }
 
-    self ! CloseCommand(uuid, new Date(), Command.Expired)
+    if (p0 == pausedTime) {
+      self ! CloseCommand(uuid, new Date(), Command.Expired)
+    }
+    else {
+      context.system.scheduler.scheduleOnce(
+        (pausedTime - p0) seconds,
+        self, CheckTimeout(uuid, timestamp, pausedTime)
+      )
+    }
   }
 
 }
