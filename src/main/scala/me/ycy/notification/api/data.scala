@@ -202,11 +202,43 @@ case class CloseCommand(
 
 //  -------------------------------- event ---------------------------------
 
-sealed trait Event
+sealed trait Event {
+  val event: String
+  def toJson(): JsValue
+}
+sealed trait ClientEvent extends Event {
+  val uuid: UUID
+}
 
-object FocusedEvent extends Event
-case class ClosedEvent(uuid: UUID, reason: Int) extends Event
-case class ClickedEvent(uuid: UUID, id: String) extends Event
+object FocusedEvent extends Event {
+  val event = "focused"
+
+  def toJson() = JsObject(Map(
+    JsString("event") → JsString(event)
+  ))
+}
+
+case class ClosedEvent(uuid: UUID,
+  reason: Int = Command.Undefined
+) extends ClientEvent {
+  val event = "closed"
+
+  def toJson() = JsObject(Map(
+    JsString("event") → JsString(event),
+    JsString("uuid") → JsString(uuid.toString),
+    JsString("reason") → JsNumber(reason)
+  ))
+}
+
+case class ClickedEvent(uuid: UUID, id: String) extends ClientEvent {
+  val event = "clicked"
+
+  def toJson() = JsObject(Map(
+    JsString("event") → JsString(event),
+    JsString("uuid") → JsString(uuid.toString),
+    JsString("id") → JsString(id)
+  ))
+}
 
 object Event {
   private def parseClosed(map: Map[String, JsValue]): Option[Event] = {
