@@ -29,7 +29,14 @@ class NotificationServer(val actorSystem: ActorSystem) {
     case event @ Path("/") ⇒ event match {
       case event: WebSocketHandshakeEvent ⇒ {
         event.authorize()
+        // send to group broadcaster
         uiActor ! WebSocketBroadcasterRegistration(event)
+
+        // send to notification actor
+        val b = actorSystem.actorOf(Props[WebSocketBroadcaster])
+        b ! WebSocketBroadcasterRegistration(event)
+        nActor ! NotificationActor.UIConnected(b)
+
         log.info("ui connect")
       }
       case event: WebSocketFrameEvent ⇒ {

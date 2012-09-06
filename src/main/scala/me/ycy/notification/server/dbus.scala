@@ -103,6 +103,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   def CloseNotification(id: UInt32) = {
     // TODO:
 
+    // NOTE: dont forget to set reason = 3
     log.debug("dbus close notification #{}", id)
   }
 

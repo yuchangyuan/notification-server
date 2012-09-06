@@ -126,7 +126,7 @@ object NotificationActor {
 
   // new ui connected, with associated WebSocketBroadcaster
   // after send active notifications, stop the WebSocketBroadcaster.
-  case class UIConnected(b: WebSocketBroadcaster)
+  case class UIConnected(b: ActorRef)
 }
 
 class NotificationActor extends Actor with ActorLogging {
@@ -147,6 +147,21 @@ class NotificationActor extends Actor with ActorLogging {
     case cmd: Command ⇒ processCommand(cmd)
     case event: Event ⇒ processEvent(event)
     case CheckTimeout(id, ts, p) ⇒ checkTimeout(id, ts, p)
+    case UIConnected(b) ⇒ {
+      // must delay some time, or else some exception will happen in netty
+      context.system.scheduler.scheduleOnce(10 milliseconds) {
+        uploadNotification(b)
+      }
+    }
+  }
+
+  def uploadNotification(b: ActorRef) = {
+    for (n ← map.values) {
+        b ! WebSocketBroadcastText(n.toCommand.toJson.toString)
+    }
+    context.system.scheduler.scheduleOnce(1 seconds) {
+      context.stop(b)
+    }
   }
 
   def processCommand(cmd: Command): Unit = {
