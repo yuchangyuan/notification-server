@@ -200,7 +200,17 @@ class NotificationActor extends Actor with ActorLogging {
     case FocusedEvent ⇒ {
       pausedTime += 1
     }
-    case _ ⇒
+
+    case e: ClientEvent ⇒ {
+      // TODO: find src of e.uuid, then dispatch to dbus or clientActor
+      e match {
+        case xe: ClosedEvent ⇒
+          // might already removed from map
+          map -= xe.uuid
+        case ce: ClientEvent ⇒
+          // TODO:
+      }
+    }
   }
 
 
