@@ -5,18 +5,6 @@ import java.util.Date
 
 import dispatch.json._
 
-case class Notification(
-  client: String,
-  uuid: UUID,
-  title: String,
-  body: String,
-  notificationClass: List[String],
-  titleClass: List[String],
-  bodyClass: List[String],
-  timestamp: Date,
-  timeout: Long
-)
-
 object Command {
   private def jsArray2strList(x: Option[JsValue]): Option[List[String]] =
     x.map {ary ⇒
