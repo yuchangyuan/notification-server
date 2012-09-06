@@ -153,22 +153,12 @@ class NotificationActor extends Actor with ActorLogging {
             return
           }
 
-          map += cc.uuid → Notification(
-            client = cc.client,
-            uuid = cc.uuid,
-            title = cc.title,
-            body = cc.body,
-            notificationClass = cc.notificationClass,
-            titleClass = cc.titleClass,
-            bodyClass = cc.bodyClass,
-            timestamp = cc.timestamp,
-            timeout = cc.timeout
-          )
+          map += cc.uuid → Notification.create(cc)
 
           if (cc.timeout != Command.TimeoutNever) {
             context.system.scheduler.scheduleOnce(
               timeout(cc.timeout),
-              self, CheckTimeout(cc.uuid, cc.timestamp)
+              self, CheckTimeout(cc.uuid, cc.timestamp, pausedTime)
             )
           }
         }
@@ -179,28 +169,13 @@ class NotificationActor extends Actor with ActorLogging {
             return
           }
 
-          var n = map(uc.uuid).copy(timestamp = uc.timestamp)
-          if (uc.title.isDefined) { n = n.copy(title = uc.title.get) }
-          if (uc.body.isDefined) { n = n.copy(body = uc.body.get) }
-          if (uc.notificationClass.isDefined) {
-            n = n.copy(notificationClass = uc.notificationClass.get)
-          }
-          if (uc.titleClass.isDefined) {
-            n = n.copy(titleClass = uc.titleClass.get)
-          }
-          if (uc.bodyClass.isDefined) {
-            n = n.copy(bodyClass = uc.bodyClass.get)
-          }
-          if (uc.timeout.isDefined) {
-            n = n.copy(timeout = uc.timeout.get)
-          }
-
+          var n = map(uc.uuid).update(uc)
           map += uc.uuid → n
 
           if (n.timeout != Command.TimeoutNever) {
             context.system.scheduler.scheduleOnce(
               timeout(n.timeout),
-              self, CheckTimeout(n.uuid, n.timestamp)
+              self, CheckTimeout(n.uuid, n.timestamp, pausedTime)
             )
           }
         }
