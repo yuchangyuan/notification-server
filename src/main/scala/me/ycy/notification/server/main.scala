@@ -9,9 +9,10 @@ import org.mashupbots.socko.handlers._
 import org.jboss.netty.handler.codec.http.QueryStringDecoder
 
 import me.ycy.notification.api._
+import com.typesafe.config._
+import java.io.File
 
-object NotificationServer {
-  val actorSystem = ActorSystem("NotificationServer")
+class NotificationServer(val actorSystem: ActorSystem) {
   val cActor = actorSystem.actorOf(Props[ClientActor], "client")
   val nActor = actorSystem.actorOf(Props[NotificationActor], "notification")
   val uiActor = actorSystem.actorOf(Props[WebSocketBroadcaster], "ui")
@@ -73,14 +74,27 @@ object NotificationServer {
     }
   })
 
+}
 
+object MainApp {
   def main(args: Array[String]) = {
+    val configDefault = ConfigFactory.load()
+    val config =
+      if (args.size > 0)
+        ConfigFactory.parseFile(new File(args(0))).withFallback(configDefault)
+      else
+        configDefault
+
+    val actorSystem = ActorSystem("notification-server", config)
+
+    val ns = new NotificationServer(actorSystem)
+
     // try to connect to session bus
-    dbusActor ! DBusBridge.Connect("")
+    ns.dbusActor ! DBusBridge.Connect("")
 
     val webServer = new WebServer(
       WebServerConfig(port = 7755),
-      routes, actorSystem
+      ns.routes, actorSystem
     )
     webServer.start()
 
@@ -88,4 +102,5 @@ object NotificationServer {
       override def run { webServer.stop() }
     })
   }
+
 }

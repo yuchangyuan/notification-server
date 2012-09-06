@@ -135,7 +135,7 @@ class NotificationActor extends Actor with ActorLogging {
   var map: Map[UUID, Notification] = Map()
   var pausedTime: Long = 0 // unit seconds
 
-  val k = "notification.timeout"
+  val k = "notification.server.timeout"
   val timeout0 = context.system.settings.config.getLong(k)
   def timeout(t: Long) =
     if (t < 0)
