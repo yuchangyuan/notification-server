@@ -92,8 +92,10 @@ object MainApp {
     // try to connect to session bus
     ns.dbusActor ! DBusBridge.Connect("")
 
+    val port = config.getInt("notification.server.port")
+    val host = config.getString("notification.server.host")
     val webServer = new WebServer(
-      WebServerConfig(port = 7755),
+      WebServerConfig(hostname = host, port = port),
       ns.routes, actorSystem
     )
     webServer.start()
