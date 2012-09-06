@@ -1,6 +1,7 @@
 *.class
 *.log
 /local
+/debug.conf
 
 # sbt specific
 dist/*

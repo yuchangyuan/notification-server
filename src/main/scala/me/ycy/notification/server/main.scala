@@ -30,10 +30,10 @@ class NotificationServer(val actorSystem: ActorSystem) {
       case event: WebSocketHandshakeEvent ⇒ {
         event.authorize()
         uiActor ! WebSocketBroadcasterRegistration(event)
-        log.debug("ui connect")
+        log.info("ui connect")
       }
       case event: WebSocketFrameEvent ⇒ {
-        log.debug("ui event")
+        log.info("ui event")
 
         if (event.isText) {
           val json = event.readText
@@ -57,7 +57,7 @@ class NotificationServer(val actorSystem: ActorSystem) {
           val name = params.get("name").get(0)
           if (name.size > 0) {
             event.authorize()
-            log.debug("client connected: {}", name)
+            log.info("client connected: {}", name)
             cActor ! WsClient(name, event)
           }
           else {
