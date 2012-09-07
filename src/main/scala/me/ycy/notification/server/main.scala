@@ -40,7 +40,7 @@ class NotificationServer(val actorSystem: ActorSystem) {
         log.info("ui connect")
       }
       case event: WebSocketFrameEvent ⇒ {
-        log.info("ui event")
+        log.debug("ui event")
 
         if (event.isText) {
           val json = event.readText
@@ -83,7 +83,7 @@ class NotificationServer(val actorSystem: ActorSystem) {
 
 }
 
-object MainApp {
+object Main {
   def main(args: Array[String]) = {
     val configDefault = ConfigFactory.load()
     val config =
