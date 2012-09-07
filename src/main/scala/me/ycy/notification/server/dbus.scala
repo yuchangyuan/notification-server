@@ -66,18 +66,41 @@ class DBusBridge extends Actor with ActorLogging {
           context.system.scheduler.scheduleOnce(5 seconds, self, RequestName)
       }
     }
+
+    case m: Signal ⇒ {
+      conn.sendSignal(m.signal())
+    }
   }
 }
 
 object DBusBridge {
   val BusName = "org.freedesktop.Notifications"
   val ObjectPath = "/org/freedesktop/Notifications"
+  val Iface = "org.freedesktop.Notifications"
 
   //  -------- for DBusBridge --------
   case class Connect(bus: String)
   object Disconnect
   object IsConnected
   object RequestName
+  // message & dbus signal
+  trait Signal {
+    def signal(): DBusSignal
+  }
+
+  case class NotificationClosed(id: Int, reason: Int) extends Signal {
+    def signal() = new DBusSignal(
+      null, ObjectPath, Iface, "NotificationClosed", "uu",
+      new UInt32(id), new UInt32(reason)
+    )
+  }
+
+  class ActionInvoked(id: Int, actionKey: String) extends Signal {
+    def signal() = new DBusSignal(
+      null, ObjectPath, Iface, "ActionInvoked", "us",
+      new UInt32(id), actionKey
+    )
+  }
 
   //  --- for NotificationService ----
   case class RegisterOn(dbus: DBusConnection)
@@ -129,11 +152,11 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     hints: JMap[String, Variant[_]],
     timeout: Int
   ): UInt32 = {
-    // TODO:
+
 
     var cc = CreateCommand(
       title = summary,
-      body = "<pre>" + body + "</pre>",
+      body = genBody(body),
       client = app_name
     )
 
@@ -182,5 +205,23 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       conn.exportObject(ObjectPath, this)
       log.info("expose notification service.")
     }
+
+    case e: ClosedEvent ⇒ {
+      log.debug("get closed event {}", e)
+      map.get(e.uuid).foreach(id ⇒
+        context.parent ! NotificationClosed(id, e.reason)
+      )
+      map -= e.uuid // remove closed notification
+    }
+
+    // TODO:
+    case e: ClientEvent ⇒ {
+    }
+  }
+
+  //  ------------------- other method -------------------
+  def genBody(body: String): String = {
+    // TODO
+    body
   }
 }

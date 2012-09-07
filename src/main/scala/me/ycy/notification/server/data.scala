@@ -6,23 +6,26 @@ import java.util.UUID
 import me.ycy.notification.api._
 
 object Notification {
-  def create(cc: CreateCommand): Notification = {
-    Notification(
-      client = cc.client,
-      uuid = cc.uuid,
-      title = cc.title,
-      body = cc.body,
-      notificationClass = cc.notificationClass,
-      titleClass = cc.titleClass,
-      bodyClass = cc.bodyClass,
-      timestamp = cc.timestamp,
-      timeout = cc.timeout
-    )
-  }
+  def create(
+    cc: CreateCommand,
+    src: String
+  ): Notification = Notification(
+    client = cc.client,
+    src = src,
+    uuid = cc.uuid,
+    title = cc.title,
+    body = cc.body,
+    notificationClass = cc.notificationClass,
+    titleClass = cc.titleClass,
+    bodyClass = cc.bodyClass,
+    timestamp = cc.timestamp,
+    timeout = cc.timeout
+  )
 }
 
 case class Notification(
   client: String,
+  src: String,  // sender actor name
   uuid: UUID,
   title: String,
   body: String,

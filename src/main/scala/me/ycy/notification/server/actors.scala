@@ -165,7 +165,7 @@ class NotificationActor extends Actor with ActorLogging {
   }
 
   def processCommand(cmd: Command): Unit = {
-      log.debug("get command {}", cmd)
+      log.debug("get command {}, from {}", cmd, sender.path)
 
       cmd match {
         case cc: CreateCommand ⇒ {
@@ -174,7 +174,7 @@ class NotificationActor extends Actor with ActorLogging {
             return
           }
 
-          map += cc.uuid → Notification.create(cc)
+          map += cc.uuid → Notification.create(cc, sender.path.toString)
 
           if (cc.timeout != Command.TimeoutNever) {
             context.system.scheduler.scheduleOnce(
@@ -203,6 +203,17 @@ class NotificationActor extends Actor with ActorLogging {
 
         case xc: CloseCommand ⇒ {
           log.debug("close notification {}", xc.uuid)
+          // send event
+          map.get(xc.uuid) match {
+            case None ⇒
+            case Some(n) ⇒ {
+              context.actorFor(n.src) ! ClosedEvent(
+                uuid = xc.uuid,
+                reason = xc.reason
+              )
+            }
+          }
+          // remove
           map -= xc.uuid
         }
       }
@@ -211,20 +222,24 @@ class NotificationActor extends Actor with ActorLogging {
       context.actorFor("/user/ui") ! WebSocketBroadcastText(json)
   }
 
-  def processEvent(event: Event) = event match {
+  def processEvent(event: Event): Unit = event match {
     case FocusedEvent ⇒ {
       pausedTime += 1
     }
 
     case e: ClientEvent ⇒ {
       // TODO: find src of e.uuid, then dispatch to dbus or clientActor
-      e match {
-        case xe: ClosedEvent ⇒
-          // might already removed from map
-          map -= xe.uuid
-        case ce: ClientEvent ⇒
-          // TODO:
+      if (!map.contains(e.uuid)) {
+        // this may happen is close command is explicitly called.
+        log.info("get event {}, but notification {} not exist, skip",
+          e, e.uuid)
+        return
       }
+
+      val n = map(e.uuid)
+      context.actorFor(n.src) ! e
+
+      if (e.isInstanceOf[ClosedEvent]) map -= e.uuid
     }
   }
 
