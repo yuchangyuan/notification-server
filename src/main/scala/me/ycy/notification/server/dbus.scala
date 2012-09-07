@@ -5,6 +5,7 @@ import org.freedesktop.Quad
 import org.freedesktop.dbus._
 
 import java.util.{List ⇒ JList, Map ⇒ JMap, ArrayList}
+import java.util.UUID
 import akka.actor._
 import akka.util.duration._
 
@@ -86,6 +87,11 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   import DBusBridge._
   import me.ycy.notification.api._
 
+  // uuid to dbus id map
+  var map: Map[UUID, Int] = Map()
+  // last used id
+  var lastId: Int = 0
+
   //  ---------------- Notifications impl ----------------
   def GetServerInformation(): Quad[String, String, String, String] = {
     new Quad("Notification Server", "Yu Changyuan", "1.0.0", "1.2")
@@ -101,10 +107,16 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   }
 
   def CloseNotification(id: UInt32) = {
-    // TODO:
-
-    // NOTE: dont forget to set reason = 3
     log.debug("dbus close notification #{}", id)
+    map.find(_._2 == id.intValue) match {
+      case None ⇒ {
+        log.warning("Notification with id {} not exist, skip", id.intValue)
+      }
+      case Some((uuid, _)) ⇒ {
+        val xc = CloseCommand(uuid = uuid, reason = 3)
+        context.actorFor("/user/notification") ! xc
+      }
+    }
   }
 
   def Notify(
@@ -140,11 +152,25 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       }
     }
 
+    val cmd: Command = map.find(_._2 == id.intValue) match {
+      case None ⇒ cc
+      case Some((uuid, _)) ⇒ {
+        // this is a update command
+        UpdateCommand(
+          uuid = uuid,
+          title = Some(cc.title),
+          body = Some(cc.body),
+          notificationClass = Some(cc.notificationClass),
+          timeout = Some(cc.timeout)
+        )
+      }
+    }
 
-    context.actorFor("/user/notification") ! cc
+    context.actorFor("/user/notification") ! cmd
 
-    // TODO: uuid to uint32 map
-    new UInt32(0)
+    lastId += 1
+    map += cc.uuid → lastId
+    new UInt32(lastId)
   }
 
 
