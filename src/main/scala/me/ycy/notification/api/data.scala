@@ -256,7 +256,7 @@ object Event {
   private def parseClicked(map: Map[String, JsValue]): Option[Event] = {
     try {
       val uuid = UUID.fromString(map("uuid").asInstanceOf[JsString].self)
-      val id = map.get("id").asInstanceOf[JsString].self
+      val id = map("id").asInstanceOf[JsString].self
 
       Some(ClickedEvent(uuid, id))
     }
