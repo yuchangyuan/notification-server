@@ -117,6 +117,16 @@ class ClientActor extends Actor with ActorLogging {
         2 seconds, self, CheckConnectivity
       )
     }
+
+    case SClientEvent(e, client) ⇒ {
+      log.debug("get client event {} for {}", e, client)
+      if (clients.contains(client)) {
+        context.actorFor(client) ! WebSocketBroadcastText(e.toJson.toString)
+      }
+      else {
+        log.debug("event target {} not exist, skip", client)
+      }
+    }
   }
 }
 
