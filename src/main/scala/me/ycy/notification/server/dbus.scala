@@ -97,7 +97,7 @@ object DBusBridge {
     )
   }
 
-  class ActionInvoked(id: Int, actionKey: String) extends Signal {
+  case class ActionInvoked(id: Int, actionKey: String) extends Signal {
     def signal() = new DBusSignal(
       null, ObjectPath, Iface, "ActionInvoked", "us",
       new UInt32(id), actionKey
@@ -219,8 +219,11 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       map -= e.uuid // remove closed notification
     }
 
-    // TODO:
-    case e: ClientEvent ⇒ {
+    case e: ClickedEvent ⇒ {
+      log.debug("get clicked event {}", e)
+      map.get(e.uuid).foreach(id ⇒
+        context.parent ! ActionInvoked(id, e.id)
+      )
     }
   }
 
