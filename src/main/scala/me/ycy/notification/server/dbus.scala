@@ -124,6 +124,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
 
   def GetCapabilities(): JList[String] = {
     val al = new ArrayList[String]();
+    al.add("actions")
     al.add("body")
     al.add("body-hyperlinks")
     al.add("body-images")
