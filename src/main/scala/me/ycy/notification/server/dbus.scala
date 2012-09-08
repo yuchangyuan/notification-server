@@ -6,6 +6,8 @@ import org.freedesktop.dbus._
 
 import java.util.{List ⇒ JList, Map ⇒ JMap, ArrayList}
 import java.util.UUID
+import java.net.URL
+
 import akka.actor._
 import akka.util.duration._
 
@@ -152,11 +154,14 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     hints: JMap[String, Variant[_]],
     timeout: Int
   ): UInt32 = {
-
+    var aMap = Map[String, String]()
+    for (i ← 0 until actions.size() / 2) {
+      aMap += actions.get(2 * i) → actions.get(2 * i + 1)
+    }
 
     var cc = CreateCommand(
       title = summary,
-      body = genBody(body),
+      body = genBody(body, icon, aMap),
       client = app_name
     )
 
@@ -220,8 +225,47 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   }
 
   //  ------------------- other method -------------------
-  def genBody(body: String): String = {
+  def genBody(
+    body: String,
+    icon: String,
+    actions: Map[String, String]
+  ): String = {
+    // URL extractor
+    object IsURL {
+      def unapply(url: String): Option[URL] = {
+        try { Some(new URL(url)) }
+        catch { case _ ⇒ None }
+      }
+    }
+
     // TODO
-    body
+    val iconDiv = icon match {
+      case "" ⇒ ""
+      case IsURL(_) ⇒ {
+        "<div style='width:40px;float:left;'><img src='" +
+        icon +
+        "' width='32px' height='32px'/></div>"
+      }
+      case str ⇒ {
+        ""
+      }
+    }
+
+    val actionDiv = "<div>" + actions.toList.map(kv ⇒
+      "<button id='" + kv._1 +
+      "'>" + kv._2 + "</button>"
+    ).mkString("\n") +
+    "</div>"
+
+    val bodyDiv = "<div style='float:left;'>" +
+      body.split("\n").map(
+        "<p style='margin:0.1em'>" + _ + "</p>"
+      ).mkString("\n") +
+      actionDiv +
+      "</div>"
+
+    "<div>" +
+    iconDiv + "\n" +
+    bodyDiv + "</div>"
   }
 }
