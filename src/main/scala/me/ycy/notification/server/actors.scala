@@ -205,7 +205,7 @@ class NotificationActor extends Actor with ActorLogging {
           log.debug("close notification {}", xc.uuid)
           // send event
           map.get(xc.uuid) match {
-            case None ⇒
+            case None ⇒ // already closed
             case Some(n) ⇒ {
               context.actorFor(n.src) ! ClosedEvent(
                 uuid = xc.uuid,
@@ -219,7 +219,7 @@ class NotificationActor extends Actor with ActorLogging {
       }
 
     val json = cmd.toJson.toString
-      context.actorFor("/user/ui") ! WebSocketBroadcastText(json)
+    context.actorFor("/user/ui") ! WebSocketBroadcastText(json)
   }
 
   def processEvent(event: Event): Unit = event match {
@@ -239,7 +239,13 @@ class NotificationActor extends Actor with ActorLogging {
       val n = map(e.uuid)
       context.actorFor(n.src) ! e
 
-      if (e.isInstanceOf[ClosedEvent]) map -= e.uuid
+      if (e.isInstanceOf[ClosedEvent]) {
+        map -= e.uuid
+        // send to ui, ensure all ui close this notification
+        val xe = e.asInstanceOf[ClosedEvent]
+        val js = CloseCommand(uuid = xe.uuid, reason = xe.reason).toJson
+        context.actorFor("/user/ui") ! WebSocketBroadcastText(js.toString)
+      }
     }
   }
 
