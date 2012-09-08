@@ -21,6 +21,9 @@ case class WsClient(
 case class WsFrame(event: WebSocketFrameEvent)
 object CheckConnectivity
 
+// server side client event
+case class SClientEvent(event: ClientEvent, client: String)
+
 class ClientActor extends Actor with ActorLogging {
   var clients: Map[String, Channel] = Map()
 
@@ -114,7 +117,6 @@ class ClientActor extends Actor with ActorLogging {
         2 seconds, self, CheckConnectivity
       )
     }
-
   }
 }
 
@@ -207,10 +209,8 @@ class NotificationActor extends Actor with ActorLogging {
           map.get(xc.uuid) match {
             case None ⇒ // already closed
             case Some(n) ⇒ {
-              context.actorFor(n.src) ! ClosedEvent(
-                uuid = xc.uuid,
-                reason = xc.reason
-              )
+              val xe = ClosedEvent(uuid = xc.uuid, reason = xc.reason)
+              context.actorFor(n.src) ! SClientEvent(xe, n.client)
             }
           }
           // remove
@@ -228,7 +228,6 @@ class NotificationActor extends Actor with ActorLogging {
     }
 
     case e: ClientEvent ⇒ {
-      // TODO: find src of e.uuid, then dispatch to dbus or clientActor
       if (!map.contains(e.uuid)) {
         // this may happen is close command is explicitly called.
         log.info("get event {}, but notification {} not exist, skip",
@@ -237,7 +236,7 @@ class NotificationActor extends Actor with ActorLogging {
       }
 
       val n = map(e.uuid)
-      context.actorFor(n.src) ! e
+      context.actorFor(n.src) ! SClientEvent(e, n.client)
 
       if (e.isInstanceOf[ClosedEvent]) {
         map -= e.uuid

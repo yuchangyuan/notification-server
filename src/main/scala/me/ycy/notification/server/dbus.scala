@@ -212,7 +212,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       log.info("expose notification service.")
     }
 
-    case e: ClosedEvent ⇒ {
+    case SClientEvent(e: ClosedEvent, _) ⇒ {
       log.debug("get closed event {}", e)
       map.get(e.uuid).foreach(id ⇒
         context.parent ! NotificationClosed(id, e.reason)
@@ -220,7 +220,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       map -= e.uuid // remove closed notification
     }
 
-    case e: ClickedEvent ⇒ {
+    case SClientEvent(e: ClickedEvent, _) ⇒ {
       log.debug("get clicked event {}", e)
       map.get(e.uuid).foreach(id ⇒
         context.parent ! ActionInvoked(id, e.id)
