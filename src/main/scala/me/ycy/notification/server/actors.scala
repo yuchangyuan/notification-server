@@ -32,7 +32,7 @@ class ClientActor extends Actor with ActorLogging {
     val PostfixMax = 100000
     var newName = name
 
-    if (clients.contains(name)) {
+    if (clients.contains(name) || !context.actorFor(name).isTerminated) {
       var i = 1
       while (clients.contains(name + "_" + i) && i <= PostfixMax) {
         i += 1
