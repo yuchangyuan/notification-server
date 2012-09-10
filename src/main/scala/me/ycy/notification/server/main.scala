@@ -28,16 +28,17 @@ class NotificationServer(val actorSystem: ActorSystem) {
     // UI
     case event @ Path("/") ⇒ event match {
       case event: WebSocketHandshakeEvent ⇒ {
-        event.authorize()
-        // send to group broadcaster
-        uiActor ! WebSocketBroadcasterRegistration(event)
+        event.authorize(onComplete = Some(e ⇒ {
+          // send to group broadcaster
+          uiActor ! WebSocketBroadcasterRegistration(e)
 
-        // send to notification actor
-        val b = actorSystem.actorOf(Props[WebSocketBroadcaster])
-        b ! WebSocketBroadcasterRegistration(event)
-        nActor ! NotificationActor.UIConnected(b)
+          // send to notification actor
+          val b = actorSystem.actorOf(Props[WebSocketBroadcaster])
+          b ! WebSocketBroadcasterRegistration(e)
+          nActor ! NotificationActor.UIConnected(b)
 
-        log.info("ui connect")
+          log.info("ui connect")
+        }))
       }
       case event: WebSocketFrameEvent ⇒ {
         log.debug("ui event")
@@ -63,9 +64,10 @@ class NotificationServer(val actorSystem: ActorSystem) {
         if (params.containsKey("name")) {
           val name = params.get("name").get(0)
           if (name.size > 0) {
-            event.authorize()
-            log.info("client connected: {}", name)
-            cActor ! WsClient(name, event)
+            event.authorize(onComplete = Some(e ⇒ {
+              log.info("client connected: {}", name)
+              cActor ! WsClient(name, e)
+            }))
           }
           else {
             log.info("client name is empty")

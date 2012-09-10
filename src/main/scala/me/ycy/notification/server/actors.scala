@@ -159,12 +159,7 @@ class NotificationActor extends Actor with ActorLogging {
     case cmd: Command ⇒ processCommand(cmd)
     case event: Event ⇒ processEvent(event)
     case CheckTimeout(id, ts, p) ⇒ checkTimeout(id, ts, p)
-    case UIConnected(b) ⇒ {
-      // must delay some time, or else some exception will happen in netty
-      context.system.scheduler.scheduleOnce(10 milliseconds) {
-        uploadNotification(b)
-      }
-    }
+    case UIConnected(b) ⇒ uploadNotification(b)
   }
 
   def uploadNotification(b: ActorRef) = {
