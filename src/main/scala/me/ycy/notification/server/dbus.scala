@@ -174,7 +174,11 @@ class NotificationService extends Actor with Notifications with ActorLogging {
         case 2 ⇒ {
           cc = cc.copy(
             notificationClass = List("critical-urgency"),
-            timeout = Command.TimeoutNever
+            timeout =
+              if (timeout == Command.TimeoutDefault)
+                Command.TimeoutNever
+              else
+                timeout
           )
         }
         case _ ⇒
