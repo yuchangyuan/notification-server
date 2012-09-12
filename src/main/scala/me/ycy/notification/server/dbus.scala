@@ -160,9 +160,11 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       aMap += actions.get(2 * i) → actions.get(2 * i + 1)
     }
 
+    val (title1, body1) = gen(summary, body, icon, aMap)
+
     var cc = CreateCommand(
-      title = summary,
-      body = genBody(body, icon, aMap),
+      title = title1,
+      body = body1,
       client = app_name
     )
 
@@ -233,11 +235,12 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   }
 
   //  ------------------- other method -------------------
-  def genBody(
+  def gen(
+    title: String,
     body: String,
     icon: String,
     actions: Map[String, String]
-  ): String = {
+  ): (String, String) = {
     // URL extractor
     object IsURL {
       def unapply(url: String): Option[URL] = {
@@ -246,18 +249,23 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       }
     }
 
+    val fileRegex = "^/.*".r
+
+    def iconT(url: String) =
+      "<div style='width:40px;float:left;'><img src='" + url +
+      "' width='32px' height='32px'/></div>"
+
+
     // TODO
     val iconDiv = icon match {
       case "" ⇒ ""
-      case IsURL(_) ⇒ {
-        "<div style='width:40px;float:left;'><img src='" +
-        icon +
-        "' width='32px' height='32px'/></div>"
-      }
-      case str ⇒ {
-        ""
-      }
+      case IsURL(_) ⇒ iconT(icon)
+      case fileRegex() ⇒ iconT("file://" + icon)
+      case _ ⇒ ""
     }
+
+    val r1 = iconDiv + title
+
 
     val actionDiv = "<div>" + actions.toList.map(kv ⇒
       "<button id='" + kv._1 +
@@ -272,8 +280,12 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       actionDiv +
       "</div>"
 
-    "<div>" +
-    iconDiv + "\n" +
-    bodyDiv + "</div>"
+    val r2 =
+      if (iconDiv == "")
+        "<div>" + bodyDiv + "</div>"
+      else
+        "<div style='position:relative;left:-1em;'>" + bodyDiv + "</div>"
+
+    (r1, r2)
   }
 }
