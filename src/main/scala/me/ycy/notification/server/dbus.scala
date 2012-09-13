@@ -274,9 +274,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     "</div>"
 
     val bodyDiv = "<div style='float:left;'>" +
-      body.split("\n").map(
-        "<p style='margin:0.1em'>" + _ + "</p>"
-      ).mkString("\n") +
+      body.replaceAll("\n", "<br/>") +
       actionDiv +
       "</div>"
 
