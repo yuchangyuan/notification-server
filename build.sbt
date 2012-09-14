@@ -6,6 +6,8 @@ organization := "me.ycy"
 
 scalaVersion := "2.9.2"
 
+scalacOptions ++= Seq("-unchecked", "-deprecation")
+
 seq(sbtassembly.Plugin.assemblySettings: _*)
 
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
