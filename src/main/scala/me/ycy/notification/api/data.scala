@@ -199,6 +199,19 @@ case class CloseCommand(
   }
 }
 
+case class StatusCommand(
+  uuid: UUID,
+  lifetime: Long
+) extends Command {
+  val command = "status"
+
+  def toJson() = JsObject(Map(
+    JsString("command") → JsString(command),
+    JsString("uuid") → JsString(uuid.toString),
+    JsString("lifetime") → JsNumber(lifetime)
+  ))
+}
+
 
 //  -------------------------------- event ---------------------------------
 

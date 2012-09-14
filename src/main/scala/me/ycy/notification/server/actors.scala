@@ -130,12 +130,77 @@ class ClientActor extends Actor with ActorLogging {
   }
 }
 
-object NotificationActor {
-  // check timeout for notification with uuid
-  // if timestamp of the notification is eq to timestamp,
-  // then the notification is updated and this check should skip.
-  case class CheckTimeout(uuid: UUID, timestamp: Date, pause: Long)
+object NotificationLifetimeUpdater {
+  case class Tick(time: Long);
+  // every pause object cause pause 1.5 second
+  case object Pause;
+}
 
+class NotificationLifetimeUpdater extends Actor with ActorLogging {
+  import NotificationLifetimeUpdater._
+
+  var uuid: UUID = null
+  var lifetime = -1L
+  var keep = false
+  var pause = false
+  var pCnt = 0L // number of pause number
+
+  def scheduleTickAndUpdateUI() = {
+    var time = lifetime % 1000
+    if (time == 0) time = 1000
+
+    if (!keep) {
+      context.parent ! StatusCommand(uuid = uuid, lifetime = lifetime)
+    }
+
+    context.system.scheduler.scheduleOnce(
+      time milliseconds,
+      self, Tick(time)
+    )
+  }
+
+  def receive = {
+    // create command
+    case (id: UUID, lt: Long, k: Boolean) ⇒ {
+      uuid = id
+      lifetime = lt
+      keep = k
+
+      scheduleTickAndUpdateUI()
+    }
+
+    // update command
+    case (up: Long, k: Boolean) ⇒ {
+      lifetime = up
+      keep = k
+    }
+
+    case Tick(time) ⇒ {
+      if (!pause) lifetime -= time
+
+
+      if ((lifetime > 0) || keep) {
+        scheduleTickAndUpdateUI()
+      }
+      else {
+        // send CloseCommand & stop self
+        context.parent ! CloseCommand(uuid = uuid, reason = Command.Expired)
+        context.stop(self)
+      }
+    }
+
+    case Pause ⇒ {
+      pCnt += 1
+      val p = pCnt // create a snapshot
+      pause = true
+      context.system.scheduler.scheduleOnce(1.5 seconds) {
+        if (this.pCnt == p) this.pause = false
+      }
+    }
+  }
+}
+
+object NotificationActor {
   // new ui connected, with associated WebSocketBroadcaster
   // after send active notifications, stop the WebSocketBroadcaster.
   case class UIConnected(b: ActorRef)
@@ -145,20 +210,18 @@ class NotificationActor extends Actor with ActorLogging {
   import NotificationActor._
 
   var map: Map[UUID, Notification] = Map()
-  var pausedTime: Long = 0 // unit seconds
 
   val k = "notification.server.timeout"
   val timeout0 = context.system.settings.config.getLong(k)
   def timeout(t: Long) =
     if (t < 0)
-      timeout0 milliseconds
+      timeout0
     else
-      t milliseconds
+      t
 
   def receive = {
     case cmd: Command ⇒ processCommand(cmd)
     case event: Event ⇒ processEvent(event)
-    case CheckTimeout(id, ts, p) ⇒ checkTimeout(id, ts, p)
     case UIConnected(b) ⇒ uploadNotification(b)
   }
 
@@ -172,56 +235,60 @@ class NotificationActor extends Actor with ActorLogging {
   }
 
   def processCommand(cmd: Command): Unit = {
-      log.debug("get command {}, from {}", cmd, sender.path)
+    log.debug("get command {}, from {}", cmd, sender.path)
 
-      cmd match {
-        case cc: CreateCommand ⇒ {
-          if (map.contains(cmd.uuid)) {
-            log.warning("receive command with same uuid: {}", cmd.uuid)
-            return
-          }
-
-          map += cc.uuid → Notification.create(cc, sender.path.toString)
-
-          if (cc.timeout != Command.TimeoutNever) {
-            context.system.scheduler.scheduleOnce(
-              timeout(cc.timeout),
-              self, CheckTimeout(cc.uuid, cc.timestamp, pausedTime)
-            )
-          }
+    cmd match {
+      case cc: CreateCommand ⇒ {
+        if (map.contains(cmd.uuid)) {
+          log.warning("receive command with same uuid: {}", cmd.uuid)
+          return
         }
 
-        case uc: UpdateCommand ⇒ {
-          if (!map.contains(uc.uuid)) {
-            log.debug("skip update for non exist notification {}", uc.uuid)
-            return
-          }
+        map += cc.uuid → Notification.create(cc, sender.path.toString)
 
-          var n = map(uc.uuid).update(uc)
-          map += uc.uuid → n
+        val lu = context.actorOf(
+          Props[NotificationLifetimeUpdater],
+          cc.uuid.toString
+        )
 
-          if (n.timeout != Command.TimeoutNever) {
-            context.system.scheduler.scheduleOnce(
-              timeout(n.timeout),
-              self, CheckTimeout(n.uuid, n.timestamp, pausedTime)
-            )
-          }
-        }
-
-        case xc: CloseCommand ⇒ {
-          log.debug("close notification {}", xc.uuid)
-          // send event
-          map.get(xc.uuid) match {
-            case None ⇒ // already closed
-            case Some(n) ⇒ {
-              val xe = ClosedEvent(uuid = xc.uuid, reason = xc.reason)
-              context.actorFor(n.src) ! SClientEvent(xe, n.client)
-            }
-          }
-          // remove
-          map -= xc.uuid
-        }
+        lu ! (
+          cc.uuid,
+          timeout(cc.timeout),
+          cc.timeout == Command.TimeoutNever
+        )
       }
+
+      case uc: UpdateCommand ⇒ {
+        if (!map.contains(uc.uuid)) {
+          log.debug("skip update for non exist notification {}", uc.uuid)
+          return
+        }
+
+        var n = map(uc.uuid).update(uc)
+        map += uc.uuid → n
+
+        val lu = context.actorFor(n.uuid.toString)
+        lu ! (timeout(n.timeout), n.timeout == Command.TimeoutNever)
+      }
+
+      case xc: CloseCommand ⇒ {
+        log.debug("close notification {}", xc.uuid)
+        // send event
+        map.get(xc.uuid) match {
+          case None ⇒ // already closed
+          case Some(n) ⇒ {
+            val xe = ClosedEvent(uuid = xc.uuid, reason = xc.reason)
+            context.actorFor(n.src) ! SClientEvent(xe, n.client)
+            // stop lifetime updater
+            context.stop(context.actorFor(xc.uuid.toString))
+          }
+        }
+        // remove
+        map -= xc.uuid
+      }
+
+      case _: StatusCommand ⇒
+    }
 
     val json = cmd.toJson.toString
     context.actorFor("/user/ui") ! WebSocketBroadcastText(json)
@@ -229,7 +296,9 @@ class NotificationActor extends Actor with ActorLogging {
 
   def processEvent(event: Event): Unit = event match {
     case FocusedEvent ⇒ {
-      pausedTime += 1
+      for (id ← map.keys) {
+        context.actorFor(id.toString) ! NotificationLifetimeUpdater.Pause
+      }
     }
 
     case e: ClientEvent ⇒ {
@@ -250,31 +319,6 @@ class NotificationActor extends Actor with ActorLogging {
         val js = CloseCommand(uuid = xe.uuid, reason = xe.reason).toJson
         context.actorFor("/user/ui") ! WebSocketBroadcastText(js.toString)
       }
-    }
-  }
-
-
-  def checkTimeout(uuid: UUID, timestamp: Date, p0: Long): Unit = {
-      // return when the notification to check is not exist
-    if (!map.contains(uuid)) {
-      log.debug("skip check timeout for non exist notification {}", uuid)
-      return
-    }
-
-    if (map(uuid).timestamp != timestamp) {
-      log.debug("skip check timeout for updated notification {} -> {}",
-        timestamp, map(uuid).timestamp)
-      return
-    }
-
-    if (p0 == pausedTime) {
-      self ! CloseCommand(uuid, new Date(), Command.Expired)
-    }
-    else {
-      context.system.scheduler.scheduleOnce(
-        (pausedTime - p0) seconds,
-        self, CheckTimeout(uuid, timestamp, pausedTime)
-      )
     }
   }
 
