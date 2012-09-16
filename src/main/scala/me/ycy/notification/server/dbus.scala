@@ -252,28 +252,27 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     val fileRegex = "^/.*".r
 
     def iconT(url: String) =
-      "<div style='width:40px;float:left;'><img src='" + url +
-      "' width='32px' height='32px'/></div>"
-
+      <div style="width:48px;height:48px;float:left;position:relative;left:-0.5em;padding:0px;">
+      <img src={url}
+           style='max-width:100%;max-height:100%;' />
+      </div>
 
     // TODO
     val iconDiv = icon match {
       case "" ⇒ ""
       case IsURL(_) ⇒ iconT(icon)
       case fileRegex() ⇒ iconT("file://" + icon)
-      case _ ⇒ ""
+      case _ ⇒ iconT("icons/" + icon + ".svg")
     }
 
     val r1 = iconDiv + title
 
+    val actionDiv = <div>{
+      actions.toList.map(kv ⇒
+        <button id={kv._1}>{kv._2}</button>
+      )}</div>
 
-    val actionDiv = "<div>" + actions.toList.map(kv ⇒
-      "<button id='" + kv._1 +
-      "'>" + kv._2 + "</button>"
-    ).mkString("\n") +
-    "</div>"
-
-    val bodyDiv = "<div style='float:left;'>" +
+    val bodyDiv = "<div style=''>" +
       body.replaceAll("\n", "<br/>") +
       actionDiv +
       "</div>"
@@ -282,7 +281,8 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       if (iconDiv == "")
         "<div>" + bodyDiv + "</div>"
       else
-        "<div style='position:relative;left:-1em;'>" + bodyDiv + "</div>"
+        "<div style='position:relative;left:-1em;min-height:0.5em;'>" +
+        bodyDiv + "</div>"
 
     (r1, r2)
   }
