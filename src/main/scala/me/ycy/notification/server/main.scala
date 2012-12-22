@@ -49,7 +49,16 @@ class NotificationServer(val actorSystem: ActorSystem) {
           // send to "/user/notification"
           Event(json) match {
             case Some(event) ⇒ nActor ! event
-            case _ ⇒ log.info("event not valid.")
+            case _ ⇒ {
+              if (json.isEmpty) {
+                // keep alive
+                log.debug("keep alive")
+                event.writeText("");
+              }
+              else {
+                log.info("event not valid.")
+              }
+            }
           }
         }
       }
