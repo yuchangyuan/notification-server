@@ -1,6 +1,6 @@
 name := "notification-server"
 
-version := "1.1.1-SNAPSHOT"
+version := "1.1.1"
 
 organization := "me.ycy"
 
