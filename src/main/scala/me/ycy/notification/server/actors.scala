@@ -1,7 +1,9 @@
 package me.ycy.notification.server
 
 import akka.actor._
-import akka.util.duration._
+import scala.concurrent.duration._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.mashupbots.socko.events._
 import org.mashupbots.socko.handlers._
@@ -11,7 +13,10 @@ import java.util.{UUID, Date}
 import org.jboss.netty.channel.Channel
 
 import me.ycy.notification.api._
-import dispatch.json._
+import dispatch.classic.json._
+
+// language feature
+import scala.language.postfixOps
 
 case class WsClient(
   name: String,
@@ -103,7 +108,8 @@ class ClientActor extends Actor with ActorLogging {
           }
         }
         catch {
-          case e ⇒ e.printStackTrace // tell client of invalid command
+          // tell client of invalid command
+          case e: Throwable ⇒ e.printStackTrace
         }
       }
       else {

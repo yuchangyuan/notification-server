@@ -9,7 +9,10 @@ import java.util.UUID
 import java.net.URL
 
 import akka.actor._
-import akka.util.duration._
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import scala.language.postfixOps
 
 class DBusBridge extends Actor with ActorLogging {
   import DBusBridge._
@@ -39,7 +42,7 @@ class DBusBridge extends Actor with ActorLogging {
         self ! RequestName
       }
       catch {
-        case e ⇒ log.warning("connect to bus {} failed", bus)
+        case e: Throwable ⇒ log.warning("connect to bus {} failed", bus)
       }
     }
 
@@ -63,7 +66,7 @@ class DBusBridge extends Actor with ActorLogging {
         log.info("request bus name {} ok", BusName)
       }
       catch {
-        case _ ⇒
+        case _: Throwable ⇒
           log.warning("request bus name {} failed, retry later.", BusName)
           context.system.scheduler.scheduleOnce(5 seconds, self, RequestName)
       }
@@ -245,7 +248,7 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     object IsURL {
       def unapply(url: String): Option[URL] = {
         try { Some(new URL(url)) }
-        catch { case _ ⇒ None }
+        catch { case _: Throwable ⇒ None }
       }
     }
 

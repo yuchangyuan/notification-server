@@ -1,19 +1,20 @@
 name := "notification-server"
 
-version := "1.1.0"
+version := "1.1.1-SNAPSHOT"
 
 organization := "me.ycy"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.1"
 
-scalacOptions ++= Seq("-unchecked", "-deprecation")
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
 seq(sbtassembly.Plugin.assemblySettings: _*)
 
-resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+resolvers += "Typesafe Repository" at
+  "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
-  "org.mashupbots.socko" % "socko-webserver_2.9.2" % "0.2.3",
-  "com.typesafe.akka" % "akka-actor"  % "2.0.3",
-  "net.databinder" % "dispatch-json_2.9.1" % "0.8.8"
+  "org.mashupbots.socko" %% "socko-webserver" % "0.2.4",
+  "com.typesafe.akka" %% "akka-actor"  % "2.1.2",
+  "net.databinder" %% "dispatch-json" % "0.8.9"
 )

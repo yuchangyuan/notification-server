@@ -3,7 +3,7 @@ package me.ycy.notification.api
 import java.util.UUID
 import java.util.Date
 
-import dispatch.json._
+import dispatch.classic.json._
 
 //  ------------------------------- command --------------------------------
 
@@ -40,7 +40,7 @@ object Command {
       ))
     }
     catch {
-      case e ⇒ e.printStackTrace; None
+      case e: Throwable ⇒ e.printStackTrace; None
     }
   }
 
@@ -58,7 +58,7 @@ object Command {
       ))
     }
     catch {
-      case e ⇒ e.printStackTrace; None
+      case e: Throwable ⇒ e.printStackTrace; None
     }
   }
 
@@ -72,7 +72,7 @@ object Command {
       ))
     }
     catch {
-      case _ ⇒ None
+      case _: Throwable ⇒ None
     }
   }
 
@@ -262,7 +262,7 @@ object Event {
       Some(ClosedEvent(uuid, reason))
     }
     catch {
-      case _ ⇒ None
+      case _: Throwable ⇒ None
     }
   }
 
@@ -274,7 +274,7 @@ object Event {
       Some(ClickedEvent(uuid, id))
     }
     catch {
-      case _ ⇒ None
+      case _: Throwable ⇒ None
     }
   }
 
@@ -295,7 +295,7 @@ object Event {
       }
     }
     catch {
-      case _ ⇒ None
+      case _: Throwable ⇒ None
     }
   }
 }
