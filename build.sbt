@@ -1,6 +1,6 @@
 name := "notification-server"
 
-version := "1.1.1"
+version := "1.1.2"
 
 organization := "me.ycy"
 
@@ -14,6 +14,7 @@ resolvers += "Typesafe Repository" at
   "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
+  "me.ycy" %% "notification-api" % "1.0",
   "org.mashupbots.socko" %% "socko-webserver" % "0.2.4",
   "com.typesafe.akka" %% "akka-actor"  % "2.1.2",
   "net.databinder" %% "dispatch-json" % "0.8.9"
