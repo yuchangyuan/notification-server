@@ -190,6 +190,9 @@ class NotificationService extends Actor with Notifications with ActorLogging {
       }
     }
 
+    log.debug("old map is {}", map)
+    log.debug("id is {}", id)
+
     val cmd: Command = map.find(_._2 == id.intValue) match {
       case None ⇒ cc
       case Some((uuid, _)) ⇒ {
@@ -206,9 +209,18 @@ class NotificationService extends Actor with Notifications with ActorLogging {
 
     context.actorFor("/user/notification") ! cmd
 
-    lastId += 1
-    map += cc.uuid → lastId
-    new UInt32(lastId)
+    // default to input id
+    var retId = id.intValue
+
+    if (cmd.isInstanceOf[CreateCommand]) {
+      lastId += 1
+      map += cc.uuid → lastId
+      retId = lastId
+    }
+
+    log.debug("new map is {}", map)
+
+    new UInt32(retId)
   }
 
 
