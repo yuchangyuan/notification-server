@@ -14,6 +14,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.language.postfixOps
 
+import me.ycy.desktop.util.IconTheme
+import org.apache.commons.codec.binary.Base64
+
 class DBusBridge extends Actor with ActorLogging {
   import DBusBridge._
 
@@ -114,6 +117,7 @@ object DBusBridge {
 class NotificationService extends Actor with Notifications with ActorLogging {
   import DBusBridge._
   import me.ycy.notification.api._
+  import java.io.File
 
   // uuid to dbus id map
   var map: Map[UUID, Int] = Map()
@@ -250,6 +254,30 @@ class NotificationService extends Actor with Notifications with ActorLogging {
   }
 
   //  ------------------- other method -------------------
+  val iconTheme = IconTheme(
+    context.system.settings.config.getString(
+      "notification.server.icon-theme"
+    ),
+    "/usr/share/notify-osd/icons" :: _
+  )
+  val base64 = new Base64()
+
+  def imgSrc(icon: String): String = {
+    import java.io.{File, FileInputStream}
+    iconTheme.findIcon(icon, 48) match {
+      case Some(filename) ⇒
+        // NOTE, here assume file has valid extension name
+        val ext = filename.split("\\.").last
+        val file = new File(filename)
+        val ary = Array.ofDim[Byte](file.length.toInt)
+        new FileInputStream(file).read(ary)
+        // NOTE, here use commons-codec 1.5
+        "data:image/" + ext + ";base64," + base64.encodeAsString(ary)
+      case _ ⇒
+        "icons/" + icon + ".svg"
+    }
+  }
+
   def gen(
     title: String,
     body: String,
@@ -269,15 +297,14 @@ class NotificationService extends Actor with Notifications with ActorLogging {
     def iconT(url: String) =
       <div style="width:48px;height:48px;float:left;position:relative;left:-0.5em;padding:0px;">
       <img src={url}
-           style='max-width:100%;max-height:100%;' />
+           style='width:48px;height:48px;' />
       </div>
 
-    // TODO
     val iconDiv = icon match {
       case "" ⇒ ""
       case IsURL(_) ⇒ iconT(icon)
       case fileRegex() ⇒ iconT("file://" + icon)
-      case _ ⇒ iconT("icons/" + icon + ".svg")
+      case _ ⇒ iconT(imgSrc(icon))
     }
 
     val r1 = iconDiv + title
